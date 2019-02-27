@@ -6,14 +6,17 @@ open Microsoft.AspNetCore
 open Microsoft.AspNetCore.Builder
 open Microsoft.AspNetCore.Hosting
 open Microsoft.Extensions.DependencyInjection
+open Microsoft.AspNetCore.Http
 
 open FSharp.Control.Tasks.V2
 open Giraffe
 open Shared
+open Thoth.Json.Giraffe
+open Thoth.Json.Net
 
-open Fable.Remoting.Server
-open Fable.Remoting.Giraffe
 open Microsoft.WindowsAzure.Storage
+
+let serializer = ThothSerializer()
 
 let tryGetEnv = System.Environment.GetEnvironmentVariable >> function null | "" -> None | x -> Some x
 
@@ -21,18 +24,24 @@ let publicPath = tryGetEnv "public_path" |> Option.defaultValue "../Client/publi
 let storageAccount = tryGetEnv "STORAGE_CONNECTIONSTRING" |> Option.defaultValue "UseDevelopmentStorage=true" |> CloudStorageAccount.Parse
 let port = "SERVER_PORT" |> tryGetEnv |> Option.map uint16 |> Option.defaultValue 8085us
 
-let getInitCounter () : Task<Counter> = task { return { Value = 42 } }
+let getInitCounter () : Counter = { Value = 42 }
 
-let counterApi = {
-    initialCounter = getInitCounter >> Async.AwaitTask
-}
+let mutable counter = getInitCounter()
+
+let incrementHandler =
+     counter <- { counter with Value = counter.Value + 1}
+     Encode.Auto.toString(0,counter) |> text
+
+let decrementHandler =
+     counter <- { counter with Value = counter.Value - 1}
+     Encode.Auto.toString(0,counter) |> text
 
 let webApp =
-    Remoting.createApi()
-    |> Remoting.withRouteBuilder Route.builder
-    |> Remoting.fromValue counterApi
-    |> Remoting.buildHttpHandler
-
+    choose [
+           routeCi (Route.builder InitialCounter) >=> (Encode.Auto.toString(0,counter) |> text)
+           routeCi (Route.builder Increment) >=> incrementHandler
+           routeCi (Route.builder Decrement) >=> decrementHandler
+    ]
 
 let configureApp (app : IApplicationBuilder) =
     app.UseDefaultFiles()
