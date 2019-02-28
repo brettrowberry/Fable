@@ -5,14 +5,12 @@ open Elmish.React
 
 open Fable.Helpers.React
 open Fable.Helpers.React.Props
+open Fable.PowerPack
 open Fable.PowerPack.Fetch
 
 open Thoth.Json
 
 open Shared
-
-
-
 
 // The model holds data that you want to keep track of while the application is running
 // in this case, we are keeping track of a counter
@@ -27,31 +25,19 @@ type Msg =
 | Decrement
 | InitialCountLoaded of Result<Counter, exn>
 
-module Server =
-
-    open Shared
-    open Fable.Remoting.Client
-
-    /// A proxy you can use to talk to server directly
-    let api : ICounterApi =
-      Remoting.createApi()
-      |> Remoting.withRouteBuilder Route.builder
-      |> Remoting.buildProxy<ICounterApi>
-
-let initialCounter = Server.api.initialCounter
+let initialCounter () =
+  fetchAs ("http://localhost:8080" + Route.builder InitialCounter) (Decode.Auto.generateDecoder<Counter>()) []
 
 // defines the initial state and initial command (= side-effect) of the application
 let init () : Model * Cmd<Msg> =
     let initialModel = { Counter = None }
     let loadCountCmd =
-        Cmd.ofAsync
+        Cmd.ofPromise
             initialCounter
             ()
             (Ok >> InitialCountLoaded)
             (Error >> InitialCountLoaded)
     initialModel, loadCountCmd
-
-
 
 // The update function computes the next state of the application based on the current state and the incoming events/messages
 // It can also run side-effects (encoded as commands) like calling the server via Http.
@@ -67,9 +53,10 @@ let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
     | _, InitialCountLoaded (Ok initialCount)->
         let nextModel = { Counter = Some initialCount }
         nextModel, Cmd.none
-
+    | _, InitialCountLoaded (Error err)->
+        Fable.Import.Browser.console.debug err.Message
+        currentModel, Cmd.none
     | _ -> currentModel, Cmd.none
-
 
 let safeComponents =
     let components =

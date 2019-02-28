@@ -4,5 +4,6 @@ group Client
     Fable.Elmish.React
     Fable.Elmish.HMR
     Fable.Core
-    Fable.Remoting.Client
+    Fulma
+    Thoth.Json
 
