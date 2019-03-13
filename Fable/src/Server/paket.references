@@ -5,4 +5,6 @@ group Server
     Microsoft.AspNetCore.StaticFiles
     Microsoft.ApplicationInsights.AspNetCore
     WindowsAzure.Storage
-    Fable.Remoting.Giraffe
+    Microsoft.Azure.Management.ResourceManager
+    Microsoft.Azure.Management.Storage.Fluent
+    Thoth.Json.Giraffe
