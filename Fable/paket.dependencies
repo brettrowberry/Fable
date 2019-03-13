@@ -5,13 +5,16 @@ group Server
 
     nuget FSharp.Core
     nuget Giraffe
+    nuget Thoth.Json.Giraffe
     nuget Microsoft.AspNetCore
     nuget Microsoft.AspNetCore.StaticFiles
     nuget Microsoft.ApplicationInsights.AspNetCore ~> 2.2
     nuget WindowsAzure.Storage
-    nuget Microsoft.Azure.Management.ResourceManager
     nuget Microsoft.Azure.Management.Storage.Fluent
-    nuget Thoth.Json.Giraffe
+    nuget Microsoft.Azure.Management.ResourceManager
+    nuget Microsoft.Azure.Management.Fluent
+    nuget Microsoft.Azure.Management.ResourceManager.Fluent
+    nuget Microsoft.IdentityModel.Clients.ActiveDirectory
 
 group Client
     source https://api.nuget.org/v3/index.json

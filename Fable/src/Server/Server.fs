@@ -1,5 +1,6 @@
 open System
 open System.IO
+open System.Linq
 open System.Threading.Tasks
 
 open Microsoft.AspNetCore
@@ -14,7 +15,14 @@ open Shared
 open Thoth.Json.Giraffe
 open Thoth.Json.Net
 
+open Storage
+open Microsoft.Azure.Management.Fluent
 open Microsoft.WindowsAzure.Storage
+open Microsoft.Azure.Management.ResourceManager
+open Microsoft.Azure.Management.ResourceManager.Fluent
+open Microsoft.Azure.Management.ResourceManager.Fluent
+
+//https://stackoverflow.com/questions/52630058/can-i-list-azure-resource-groups-from-a-local-c-sharp-application
 
 let serializer = ThothSerializer()
 
@@ -36,11 +44,38 @@ let decrementHandler =
      counter <- { counter with Value = counter.Value - 1}
      Encode.Auto.toString(0,counter) |> text
 
+let listHandler =
+     let creds = SdkContext.AzureCredentialsFactory.FromServicePrincipal(string c.ClientId, c.ClientSecret, string c.TenantId, AzureEnvironment.AzureGlobalCloud)
+     // let rm = ResourceManager.Configure().Authenticate(creds).WithSubscription(s) //not sure if this is worth keeping
+     let azure = Azure.Configure().Authenticate(creds).WithSubscription(s)
+     let sas = azure.StorageAccounts.List().ToArray()
+     let saNames = sas |> Array.map (fun sa -> sa.Name)
+     json saNames
+
+let createHandler =
+     let creds = SdkContext.AzureCredentialsFactory.FromServicePrincipal(string c.ClientId, c.ClientSecret, string c.TenantId, AzureEnvironment.AzureGlobalCloud)
+     let azure = Azure.Configure().Authenticate(creds).WithSubscription(s)
+     text "not implemented"
+
+let deleteHandler =
+     let creds = SdkContext.AzureCredentialsFactory.FromServicePrincipal(string c.ClientId, c.ClientSecret, string c.TenantId, AzureEnvironment.AzureGlobalCloud)
+     let azure = Azure.Configure().Authenticate(creds).WithSubscription(s)
+     text "not implemented"
+
 let webApp =
     choose [
            routeCi (Route.builder InitialCounter) >=> (Encode.Auto.toString(0,counter) |> text)
            routeCi (Route.builder Increment) >=> incrementHandler
            routeCi (Route.builder Decrement) >=> decrementHandler
+
+           //for next week
+           routeCi (Route.builder List) >=> warbler (fun _ -> listHandler)
+           routeCi (Route.builder Create) >=> createHandler
+           routeCi (Route.builder Delete) >=> deleteHandler
+
+           //later          
+           //routeCi (Route.builder CreateSASToken) >=> x
+           //routeCi (Route.builder ChangeKey) >=> x
     ]
 
 let configureApp (app : IApplicationBuilder) =
@@ -49,7 +84,8 @@ let configureApp (app : IApplicationBuilder) =
        .UseGiraffe webApp
 
 let configureServices (services : IServiceCollection) =
-    services.AddGiraffe() |> ignore
+    services.AddGiraffe()
+    |> ignore
     tryGetEnv "APPINSIGHTS_INSTRUMENTATIONKEY" |> Option.iter (services.AddApplicationInsightsTelemetry >> ignore)
 
 WebHost
