@@ -45,21 +45,14 @@ let decrementHandler =
      Encode.Auto.toString(0,counter) |> text
 
 let listHandler =
-     let creds = SdkContext.AzureCredentialsFactory.FromServicePrincipal(string c.ClientId, c.ClientSecret, string c.TenantId, AzureEnvironment.AzureGlobalCloud)
-     // let rm = ResourceManager.Configure().Authenticate(creds).WithSubscription(s) //not sure if this is worth keeping
-     let azure = Azure.Configure().Authenticate(creds).WithSubscription(s)
      let sas = azure.StorageAccounts.List().ToArray()
      let saNames = sas |> Array.map (fun sa -> sa.Name)
      json saNames
 
 let createHandler =
-     let creds = SdkContext.AzureCredentialsFactory.FromServicePrincipal(string c.ClientId, c.ClientSecret, string c.TenantId, AzureEnvironment.AzureGlobalCloud)
-     let azure = Azure.Configure().Authenticate(creds).WithSubscription(s)
      text "not implemented"
 
 let deleteHandler =
-     let creds = SdkContext.AzureCredentialsFactory.FromServicePrincipal(string c.ClientId, c.ClientSecret, string c.TenantId, AzureEnvironment.AzureGlobalCloud)
-     let azure = Azure.Configure().Authenticate(creds).WithSubscription(s)
      text "not implemented"
 
 let webApp =
