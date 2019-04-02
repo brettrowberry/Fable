@@ -1,31 +1,43 @@
 module Storage
 
-open Microsoft.Azure.Management.Fluent
-open Microsoft.Azure.Management.ResourceManager.Fluent
-open Microsoft.Azure.Management.ResourceManager.Fluent.Authentication
 open System
+open System.Collections.Generic
+open System.Linq
+open Microsoft.Azure.Management.Fluent
+open Microsoft.Azure.Management.Storage.Fluent
+open Microsoft.Azure.Management.Storage.Fluent.Models
+open Microsoft.Azure.Management.ResourceManager.Fluent
 
-// type AuthenticationCredentials = { ClientId : Guid; ClientSecret : string; TenantId : Guid }
+let azureStorage = 
+    let azure =
+        let subscription = "06279c1b-6b5a-4089-8b9a-754f69a378fb"
+        let creds = SdkContext.AzureCredentialsFactory.FromServicePrincipal(
+                        clientId = "8bc681b1-9de0-4147-9a30-18d0fcedf398", 
+                        clientSecret = "jtkDJ5s09kdYaAsit1DB0zg1gE3ECh2kd0QI5yyC95o=", 
+                        tenantId = "b41bb662-23d3-4774-bf22-934d7cf1b337", 
+                        environment = AzureEnvironment.AzureGlobalCloud)
+        Azure.Configure().Authenticate(creds).WithSubscription(subscription)
+    azure.StorageAccounts
 
-// type [<NoComparison>] AuthenticatedContext = AuthenticatedContext of IResourceManager
+let resourceGroup = "fable-rg"
 
-/// Authenticates to Azure using the supplied credentials for a specific subscription.
-// let authenticate (credentials:AuthenticationCredentials) (subscriptionId:Guid) =
-//     let spi = AzureCredentialsFactory().FromServicePrincipal(string credentials.ClientId, credentials.ClientSecret, string credentials.TenantId, AzureEnvironment.AzureGlobalCloud)
-//     ResourceManager
-//         .Authenticate(spi)
-//         .WithSubscription(string subscriptionId)
-//         |> AuthenticatedContext
+let getStorageAccounts () = azureStorage.List().ToArray()
+let getStorageAccount name = azureStorage.GetByResourceGroup(resourceGroup, name)
+let deleteStorageAccount name =
+    let storageAccount = getStorageAccount name
+    azureStorage.DeleteById storageAccount.Id
 
-let azure = 
-    let subscription = "06279c1b-6b5a-4089-8b9a-754f69a378fb"
-    let creds = SdkContext.AzureCredentialsFactory.FromServicePrincipal(
-                    clientId = "8bc681b1-9de0-4147-9a30-18d0fcedf398", 
-                    clientSecret = "jtkDJ5s09kdYaAsit1DB0zg1gE3ECh2kd0QI5yyC95o=", 
-                    tenantId = "b41bb662-23d3-4774-bf22-934d7cf1b337", 
-                    environment = AzureEnvironment.AzureGlobalCloud)
-    //ResourceManager.Configure().Authenticate(creds).WithSubscription(s) //not sure if this is worth keeping
-    Azure.Configure().Authenticate(creds).WithSubscription(subscription)
-
-let generateStorageAccountName() =
-    Guid.NewGuid().ToString("N").Substring(0,24)
+let createStorageAccount nickname =
+    let storageAccountName = Guid.NewGuid().ToString("N").Substring(0,24)
+    let tags = Dictionary<string, string>(dict [ ("nickname", nickname) ])
+    let sa = azureStorage.Define(storageAccountName)
+               .WithRegion("southcentralus")
+               .WithNewResourceGroup("fable-rg")
+               .WithGeneralPurposeAccountKindV2()
+               .WithSku(StorageAccountSkuType.Standard_LRS)
+               .WithOnlyHttpsTraffic()
+               .WithBlobStorageAccountKind()
+               .WithAccessTier(AccessTier.Cool)
+               .WithTags(tags)
+               .Create()
+    sa.Name

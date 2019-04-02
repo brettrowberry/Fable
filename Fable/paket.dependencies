@@ -10,6 +10,7 @@ group Server
     nuget Microsoft.AspNetCore.StaticFiles
     nuget Microsoft.ApplicationInsights.AspNetCore ~> 2.2
     nuget WindowsAzure.Storage
+    nuget Microsoft.Azure.Management.Storage
     nuget Microsoft.Azure.Management.Storage.Fluent
     nuget Microsoft.Azure.Management.ResourceManager
     nuget Microsoft.Azure.Management.Fluent

@@ -15,60 +15,42 @@ open Shared
 open Thoth.Json.Giraffe
 open Thoth.Json.Net
 
-open Storage
-open Microsoft.Azure.Management.Fluent
 open Microsoft.WindowsAzure.Storage
-open Microsoft.Azure.Management.ResourceManager
-open Microsoft.Azure.Management.ResourceManager.Fluent
-open Microsoft.Azure.Management.ResourceManager.Fluent
+open Storage
 
 //https://stackoverflow.com/questions/52630058/can-i-list-azure-resource-groups-from-a-local-c-sharp-application
 
 let serializer = ThothSerializer()
-
 let tryGetEnv = System.Environment.GetEnvironmentVariable >> function null | "" -> None | x -> Some x
-
 let publicPath = tryGetEnv "public_path" |> Option.defaultValue "../Client/public" |> Path.GetFullPath
 let storageAccount = tryGetEnv "STORAGE_CONNECTIONSTRING" |> Option.defaultValue "UseDevelopmentStorage=true" |> CloudStorageAccount.Parse
 let port = "SERVER_PORT" |> tryGetEnv |> Option.map uint16 |> Option.defaultValue 8085us
 
-let getInitCounter () : Counter = { Value = 42 }
-
-let mutable counter = getInitCounter()
-
-let incrementHandler =
-     counter <- { counter with Value = counter.Value + 1}
-     Encode.Auto.toString(0,counter) |> text
-
-let decrementHandler =
-     counter <- { counter with Value = counter.Value - 1}
-     Encode.Auto.toString(0,counter) |> text
-
-let listHandler =
-     let sas = azure.StorageAccounts.List().ToArray()
+let listHandler () =
+     let sas = azureStorage.List().ToArray()
      let saNames = sas |> Array.map (fun sa -> sa.Name)
      json saNames
 
-let createHandler =
-     text "not implemented"
+let createHandler nickname = 
+     let name = createStorageAccount nickname
+     sprintf "created '%s' with nickname '%s'" name nickname |> text
 
-let deleteHandler =
-     text "not implemented"
+let deleteHandler name =
+     deleteStorageAccount name
+     sprintf "deleted '%s'" name |> text
 
 let webApp =
     choose [
-           routeCi (Route.builder InitialCounter) >=> (Encode.Auto.toString(0,counter) |> text)
-           routeCi (Route.builder Increment) >=> incrementHandler
-           routeCi (Route.builder Decrement) >=> decrementHandler
+           routeCi (Route.builder Route.List) >=> warbler (fun _ -> listHandler ())
+           routeCif "/api/Create/%s" (fun s -> createHandler s) 
+           routeCif "/api/Delete/%s" (fun s -> deleteHandler s)
 
-           //for next week
-           routeCi (Route.builder List) >=> warbler (fun _ -> listHandler)
-           routeCi (Route.builder Create) >=> createHandler
-           routeCi (Route.builder Delete) >=> deleteHandler
-
-           //later          
+           //later
+           //get storage account details        
            //routeCi (Route.builder CreateSASToken) >=> x
            //routeCi (Route.builder ChangeKey) >=> x
+           
+           setStatusCode 404 >=> text "Not Found"
     ]
 
 let configureApp (app : IApplicationBuilder) =

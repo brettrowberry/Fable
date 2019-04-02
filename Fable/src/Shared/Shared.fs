@@ -1,12 +1,6 @@
 namespace Shared
 
-type Counter = { Value : int }
-
-type Route = 
-    | InitialCounter 
-    | Increment 
-    | Decrement
-    
+type Route =    
     | List
     | Create
     | Delete
