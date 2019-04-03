@@ -48,11 +48,18 @@ let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
 //https://fulma.github.io/Fulma/#fulma/layouts/columns
 //https://fulma.github.io/Fulma/#fulma/elements/table
 let viewAccounts (model : FableStorageAccount [] ) (dispatch : Msg -> unit) =
-  let header = tr [] [ th [] [ str "Name" ]; th [] [ str "Region" ] ]
   let tableRow name id = tr [] [ td [] [ str name ]; td [] [ str id ] ]
-  let data = [ for x in model -> tableRow x.name x.region ]
-  let tableContents = header :: data
-  table [] tableContents
+  let tableBody = [ for x in model -> tableRow x.name x.region ]
+  Table.table [ Table.IsBordered; Table.IsStriped; Table.IsHoverable; Table.IsFullWidth ] [ 
+    thead [] [
+      tr [] [ 
+        th [] [ str "Name" ]
+        th [] [ str "Region" ] 
+      ]      
+    ]
+    tbody [] 
+      tableBody
+  ]
 
 let view (model : Model) (dispatch : Msg -> unit) =
     div []
