@@ -26,9 +26,11 @@ let publicPath = tryGetEnv "public_path" |> Option.defaultValue "../Client/publi
 let storageAccount = tryGetEnv "STORAGE_CONNECTIONSTRING" |> Option.defaultValue "UseDevelopmentStorage=true" |> CloudStorageAccount.Parse
 let port = "SERVER_PORT" |> tryGetEnv |> Option.map uint16 |> Option.defaultValue 8085us
 
+// let detailsHandler name = //TODO
+
 let listHandler () =
      let sas = azureStorage.List().ToArray()
-     let saNames = sas |> Array.map (fun sa -> sa.Name)
+     let saNames = sas |> Array.map (fun sa -> { name = sa.Name; region = sa.RegionName } )
      json saNames
 
 let createHandler nickname = 
@@ -42,8 +44,8 @@ let deleteHandler name =
 let webApp =
     choose [
            routeCi (Route.builder Route.List) >=> warbler (fun _ -> listHandler ())
-           routeCif "/api/Create/%s" (fun s -> createHandler s) 
-           routeCif "/api/Delete/%s" (fun s -> deleteHandler s)
+           routeCif "/api/Create/%s" createHandler
+           routeCif "/api/Delete/%s" deleteHandler
 
            //later
            //get storage account details        
