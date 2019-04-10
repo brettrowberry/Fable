@@ -2,7 +2,7 @@ namespace Shared
 
 type Route =    
     | List
-    | Create
+    | Create of string
     | Delete
 
 type FableStorageAccount = 
@@ -14,4 +14,6 @@ type FableStorageAccount =
 
 module Route =
     let builder (route : Route) = 
-        sprintf "/api/%s" (route.ToString())
+        match route with
+        | List | Delete -> sprintf "/api/%s" (route.ToString())
+        | Create nickname -> sprintf "/api/Create/%s" nickname

@@ -15,39 +15,77 @@ open System.Globalization
 
 open Fulma
 
-type Model = { Accounts : FableStorageAccount [] }
+type Model = { Accounts : FableStorageAccount []
+               Error : exn option}
 
 type Msg =
 | ListAccounts of Result<FableStorageAccount [], exn>
+
 | Create of string
+| CreateOk of string //consider collapsing into CreateStastus
+| CreateErr of exn
+
 | Delete of string
+| DeleteOk of Result<string,exn> //consider collapsing into DeleteStastus
+| DeleteErr of Result<string,exn>
 
 let fetchAccounts () =
   fetchAs ("http://localhost:8080" + Route.builder Route.List) (Decode.Auto.generateDecoder<FableStorageAccount []>()) []
 
+let createAccount (name : string) =
+  promise {
+    let! resp = fetch ("http://localhost:8080" + Route.builder (Route.Create name)) []
+    let! text = resp.text()
+    return text
+  }
+  
+let loadCountCmd =
+    Cmd.ofPromise
+        fetchAccounts
+        ()
+        (Ok >> ListAccounts)
+        (Error >> ListAccounts)
+
 let init () : Model * Cmd<Msg> =
-    let initialModel = { Accounts = [||] }
-    let loadCountCmd =
-        Cmd.ofPromise
-            fetchAccounts
-            ()
-            (Ok >> ListAccounts)
-            (Error >> ListAccounts)
+    let initialModel = { Accounts = [||]; Error = None }
     initialModel, loadCountCmd
 
 let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
     match msg with
     | ListAccounts (Ok accounts)->
-        let nextModel = { Accounts = accounts }
+        let nextModel = { Accounts = accounts; Error = None }
         nextModel, Cmd.none
     | ListAccounts (Error err)->
         Fable.Import.Browser.console.debug err.Message
         currentModel, Cmd.none
-    | _ -> currentModel, Cmd.none
+    | Create nickname -> //throw up a spinner on the create button?
+        let createCmd =
+            Cmd.ofPromise 
+                createAccount
+                nickname
+                CreateOk
+                CreateErr         
+        currentModel, createCmd
+    | CreateOk _ ->
+        currentModel, loadCountCmd          
+    | _ -> 
+      Fable.Import.Browser.console.debug "Match Any"
+      currentModel, Cmd.none
 
-//https://fulma.github.io/Fulma/#fulma/layouts/columns
-//https://fulma.github.io/Fulma/#fulma/elements/table
+let viewCommands (dispatch : Msg -> unit) =
+  Container.container [] [
+    Button.a [Button.OnClick(fun _ -> Create "name" |> dispatch)] [ str "Create"]
+  ]  
+
+let viewError (model : exn option) =
+  //https://fulma.github.io/Fulma/#fulma/components/message
+  Message.message [Message.Color IsDanger] [
+    Delete.delete [ ] []
+  ]
+
 let viewAccounts (model : FableStorageAccount [] ) (dispatch : Msg -> unit) =
+    //https://fulma.github.io/Fulma/#fulma/layouts/columns
+    //https://fulma.github.io/Fulma/#fulma/elements/table
   let tableRow name id = tr [] [ td [] [ str name ]; td [] [ str id ] ]
   let tableBody = [ for x in model -> tableRow x.name x.region ]
   Table.table [ Table.IsBordered; Table.IsStriped; Table.IsHoverable; Table.IsFullWidth ] [ 
@@ -63,7 +101,9 @@ let viewAccounts (model : FableStorageAccount [] ) (dispatch : Msg -> unit) =
 
 let view (model : Model) (dispatch : Msg -> unit) =
     div []
-        [ viewAccounts model.Accounts dispatch ]
+        [ viewError model.Error
+          viewCommands dispatch
+          viewAccounts model.Accounts dispatch ]
 
 #if DEBUG
 open Elmish.Debug
