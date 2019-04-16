@@ -19,15 +19,14 @@ type Model = { Accounts : FableStorageAccount []
                Error : exn option}
 
 type Msg =
-| ListAccounts of Result<FableStorageAccount [], exn>
-
+| ListAccounts of FableStorageAccount []
 | Create of string
-| CreateOk of string //consider collapsing into CreateStastus
-| CreateErr of exn
-
+| CreateOk of string
+| ErrorMsg of exn
+| RemoveError 
 | Delete of string
-| DeleteOk of Result<string,exn> //consider collapsing into DeleteStastus
-| DeleteErr of Result<string,exn>
+| DeleteOk of string
+
 
 let fetchAccounts () =
   fetchAs ("http://localhost:8080" + Route.builder Route.List) (Decode.Auto.generateDecoder<FableStorageAccount []>()) []
@@ -43,8 +42,8 @@ let loadCountCmd =
     Cmd.ofPromise
         fetchAccounts
         ()
-        (Ok >> ListAccounts)
-        (Error >> ListAccounts)
+        ListAccounts
+        ErrorMsg
 
 let init () : Model * Cmd<Msg> =
     let initialModel = { Accounts = [||]; Error = None }
@@ -52,19 +51,21 @@ let init () : Model * Cmd<Msg> =
 
 let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
     match msg with
-    | ListAccounts (Ok accounts)->
+    | ListAccounts accounts ->
         let nextModel = { Accounts = accounts; Error = None }
         nextModel, Cmd.none
-    | ListAccounts (Error err)->
+    | ErrorMsg err ->
         Fable.Import.Browser.console.debug err.Message
-        currentModel, Cmd.none
+        {currentModel with Error = Some err}, Cmd.none
+    | RemoveError ->
+        {currentModel with Error = None}, Cmd.none    
     | Create nickname -> //throw up a spinner on the create button?
         let createCmd =
             Cmd.ofPromise 
                 createAccount
                 nickname
                 CreateOk
-                CreateErr         
+                ErrorMsg        
         currentModel, createCmd
     | CreateOk _ ->
         currentModel, loadCountCmd          
@@ -72,22 +73,26 @@ let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
       Fable.Import.Browser.console.debug "Match Any"
       currentModel, Cmd.none
 
+//TODO make name an input
 let viewCommands (dispatch : Msg -> unit) =
   Container.container [] [
     Button.a [Button.OnClick(fun _ -> Create "name" |> dispatch)] [ str "Create"]
   ]  
 
-let viewError (model : exn option) =
+let viewError (model : exn) (dispatch : Msg -> unit) =
   //https://fulma.github.io/Fulma/#fulma/components/message
-  Message.message [Message.Color IsDanger] [
-    Delete.delete [ ] []
-  ]
+  Message.message [Message.Color IsDanger; Message.Size IsSmall] [ 
+    Message.header [ ]
+      [ str "Error"
+        Delete.delete [ Delete.OnClick (fun _ -> dispatch RemoveError) ] [ ] ]
+    Message.body [ ] [ str model.Message ] ]
+  
 
 let viewAccounts (model : FableStorageAccount [] ) (dispatch : Msg -> unit) =
     //https://fulma.github.io/Fulma/#fulma/layouts/columns
     //https://fulma.github.io/Fulma/#fulma/elements/table
   let tableRow name id = tr [] [ td [] [ str name ]; td [] [ str id ] ]
-  let tableBody = [ for x in model -> tableRow x.name x.region ]
+  let tableBody = [ for x in model -> tableRow x.Name x.Region ]
   Table.table [ Table.IsBordered; Table.IsStriped; Table.IsHoverable; Table.IsFullWidth ] [ 
     thead [] [
       tr [] [ 
@@ -101,9 +106,11 @@ let viewAccounts (model : FableStorageAccount [] ) (dispatch : Msg -> unit) =
 
 let view (model : Model) (dispatch : Msg -> unit) =
     div []
-        [ viewError model.Error
-          viewCommands dispatch
-          viewAccounts model.Accounts dispatch ]
+        (seq {
+          if model.Error.IsSome then 
+            yield viewError model.Error.Value dispatch
+          yield viewCommands dispatch
+          yield viewAccounts model.Accounts dispatch })
 
 #if DEBUG
 open Elmish.Debug

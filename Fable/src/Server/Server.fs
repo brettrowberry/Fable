@@ -20,7 +20,6 @@ open Storage
 
 //https://stackoverflow.com/questions/52630058/can-i-list-azure-resource-groups-from-a-local-c-sharp-application
 
-let serializer = ThothSerializer()
 let tryGetEnv = System.Environment.GetEnvironmentVariable >> function null | "" -> None | x -> Some x
 let publicPath = tryGetEnv "public_path" |> Option.defaultValue "../Client/public" |> Path.GetFullPath
 let storageAccount = tryGetEnv "STORAGE_CONNECTIONSTRING" |> Option.defaultValue "UseDevelopmentStorage=true" |> CloudStorageAccount.Parse
@@ -30,7 +29,7 @@ let port = "SERVER_PORT" |> tryGetEnv |> Option.map uint16 |> Option.defaultValu
 
 let listHandler () =
      let sas = azureStorage.List().ToArray()
-     let saNames = sas |> Array.map (fun sa -> { name = sa.Name; region = sa.RegionName } )
+     let saNames = sas |> Array.map (fun sa -> { Name = sa.Name; Region = sa.RegionName } )
      json saNames
 
 let createHandler nickname = 
@@ -61,8 +60,8 @@ let configureApp (app : IApplicationBuilder) =
        .UseGiraffe webApp
 
 let configureServices (services : IServiceCollection) =
-    services.AddGiraffe()
-    |> ignore
+    services.AddGiraffe() |> ignore
+    services.AddSingleton<Giraffe.Serialization.Json.IJsonSerializer>(Thoth.Json.Giraffe.ThothSerializer()) |> ignore
     tryGetEnv "APPINSIGHTS_INSTRUMENTATIONKEY" |> Option.iter (services.AddApplicationInsightsTelemetry >> ignore)
 
 WebHost
