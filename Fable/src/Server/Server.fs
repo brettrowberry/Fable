@@ -36,15 +36,20 @@ let createHandler nickname =
      let name = createStorageAccount nickname
      sprintf "created '%s' with nickname '%s'" name nickname |> text
 
-let deleteHandler name =
-     deleteStorageAccount name
-     sprintf "deleted '%s'" name |> text
+let deleteHandler : HttpHandler =
+     fun (next : HttpFunc) (ctx : HttpContext) ->
+          task {
+               let! ids = ctx.BindJsonAsync<string []>()
+               let! results = deleteStorageAccounts ids
+               let returnText = String.concat "," results |> text
+               return! returnText next ctx
+          }
 
 let webApp =
     choose [
            routeCi (Route.builder Route.List) >=> warbler (fun _ -> listHandler ())
            routeCif "/api/Create/%s" createHandler
-           routeCif "/api/Delete/%s" deleteHandler
+           routeCi (Route.builder Route.Delete) >=> deleteHandler
 
            //later
            //get storage account details        

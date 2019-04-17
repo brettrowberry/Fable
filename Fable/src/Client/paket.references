@@ -6,4 +6,4 @@ group Client
     Fable.Core
     Fulma
     Thoth.Json
-
+    Fulma.Extensions.Wikiki.Checkradio

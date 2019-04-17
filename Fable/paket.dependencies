@@ -30,6 +30,7 @@ group Client
     nuget Fable.React ~> 4
     nuget Fulma ~> 1.1
     nuget Thoth.Json
+    nuget Fulma.Extensions.Wikiki.Checkradio
 
 group Build
     source https://api.nuget.org/v3/index.json

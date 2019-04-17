@@ -14,9 +14,12 @@ open Shared
 open System.Globalization
 
 open Fulma
+open Fulma.Extensions.Wikiki
 
 type Model = { Accounts : FableStorageAccount []
-               Error : exn option}
+               Error : exn option
+               IsProcessing : bool
+               SelectedIds : Set<string>}
 
 type Msg =
 | ListAccounts of FableStorageAccount []
@@ -24,9 +27,9 @@ type Msg =
 | CreateOk of string
 | ErrorMsg of exn
 | RemoveError 
-| Delete of string
+| Delete
 | DeleteOk of string
-
+| ToggleSelect of string
 
 let fetchAccounts () =
   fetchAs ("http://localhost:8080" + Route.builder Route.List) (Decode.Auto.generateDecoder<FableStorageAccount []>()) []
@@ -38,7 +41,20 @@ let createAccount (name : string) =
     return text
   }
   
-let loadCountCmd =
+let deleteAccounts (ids : string[]) =
+  promise {
+    let! resp = postRecord<string []> ("http://localhost:8080" + Route.builder Route.Delete) ids []
+    return! resp.text()
+  }
+
+let deleteAccountsCmd (ids : string[]) =
+    Cmd.ofPromise
+        deleteAccounts         
+        ids
+        DeleteOk
+        ErrorMsg
+
+let listAccountsCmd =
     Cmd.ofPromise
         fetchAccounts
         ()
@@ -46,17 +62,16 @@ let loadCountCmd =
         ErrorMsg
 
 let init () : Model * Cmd<Msg> =
-    let initialModel = { Accounts = [||]; Error = None }
-    initialModel, loadCountCmd
+    let initialModel = { Accounts = [||]; Error = None; IsProcessing = false; SelectedIds = Set.empty}
+    initialModel, listAccountsCmd
 
 let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
     match msg with
     | ListAccounts accounts ->
-        let nextModel = { Accounts = accounts; Error = None }
-        nextModel, Cmd.none
+        {currentModel with Accounts = accounts}, Cmd.none
     | ErrorMsg err ->
         Fable.Import.Browser.console.debug err.Message
-        {currentModel with Error = Some err}, Cmd.none
+        {currentModel with Error = Some err; IsProcessing = false}, Cmd.none
     | RemoveError ->
         {currentModel with Error = None}, Cmd.none    
     | Create nickname -> //throw up a spinner on the create button?
@@ -66,9 +81,19 @@ let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
                 nickname
                 CreateOk
                 ErrorMsg        
-        currentModel, createCmd
+        {currentModel with IsProcessing = true}, createCmd
     | CreateOk _ ->
-        currentModel, loadCountCmd          
+        {currentModel with IsProcessing = false}, listAccountsCmd
+    | Delete -> //todo diable delete button
+        {currentModel with IsProcessing = true}, deleteAccountsCmd (Array.ofSeq currentModel.SelectedIds )
+    | DeleteOk _ -> 
+        {currentModel with IsProcessing = false; SelectedIds = Set.empty}, listAccountsCmd
+    | ToggleSelect id ->
+        let newSet = 
+          if currentModel.SelectedIds.Contains id
+          then currentModel.SelectedIds.Remove id 
+          else currentModel.SelectedIds.Add id
+        {currentModel with SelectedIds = newSet}, listAccountsCmd               
     | _ -> 
       Fable.Import.Browser.console.debug "Match Any"
       currentModel, Cmd.none
@@ -77,7 +102,9 @@ let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
 let viewCommands (dispatch : Msg -> unit) =
   Container.container [] [
     Button.a [Button.OnClick(fun _ -> Create "name" |> dispatch)] [ str "Create"]
-  ]  
+  ]
+
+let viewSpinner = div [ ClassName "lds-dual-ring" ] []
 
 let viewError (model : exn) (dispatch : Msg -> unit) =
   //https://fulma.github.io/Fulma/#fulma/components/message
@@ -86,19 +113,30 @@ let viewError (model : exn) (dispatch : Msg -> unit) =
       [ str "Error"
         Delete.delete [ Delete.OnClick (fun _ -> dispatch RemoveError) ] [ ] ]
     Message.body [ ] [ str model.Message ] ]
-  
 
-let viewAccounts (model : FableStorageAccount [] ) (dispatch : Msg -> unit) =
+let viewAccountRow isSelected id region dispatch = 
+  tr [] [ 
+    td [] [ Checkradio.checkbox [ 
+      Checkradio.Id id
+      Checkradio.Checked isSelected
+      Checkradio.OnChange (fun _ -> ToggleSelect id |> dispatch) ] []]
+    td [] [ str id ] 
+    td [] [ str region ] ]
+
+let viewAccounts (model : Model ) (dispatch : Msg -> unit) =
     //https://fulma.github.io/Fulma/#fulma/layouts/columns
     //https://fulma.github.io/Fulma/#fulma/elements/table
-  let tableRow name id = tr [] [ td [] [ str name ]; td [] [ str id ] ]
-  let tableBody = [ for x in model -> tableRow x.Name x.Region ]
+  
+  let tableBody = 
+    [ for x in model.Accounts -> 
+      viewAccountRow (model.SelectedIds.Contains x.Name) x.Name x.Region dispatch]
   Table.table [ Table.IsBordered; Table.IsStriped; Table.IsHoverable; Table.IsFullWidth ] [ 
     thead [] [
       tr [] [ 
+        th [] [ str "Selected" ]
         th [] [ str "Name" ]
         th [] [ str "Region" ] 
-      ]      
+      ]
     ]
     tbody [] 
       tableBody
@@ -109,8 +147,10 @@ let view (model : Model) (dispatch : Msg -> unit) =
         (seq {
           if model.Error.IsSome then 
             yield viewError model.Error.Value dispatch
+          if model.IsProcessing then 
+            yield viewSpinner          
           yield viewCommands dispatch
-          yield viewAccounts model.Accounts dispatch })
+          yield viewAccounts model dispatch })
 
 #if DEBUG
 open Elmish.Debug

@@ -23,9 +23,7 @@ let resourceGroup = "fable-rg"
 
 let getStorageAccounts () = azureStorage.List().ToArray()
 let getStorageAccount name = azureStorage.GetByResourceGroup(resourceGroup, name)
-let deleteStorageAccount name =
-    let storageAccount = getStorageAccount name
-    azureStorage.DeleteById storageAccount.Id
+let deleteStorageAccounts ids = azureStorage.DeleteByIdsAsync ids
 
 let createStorageAccount nickname =
     let storageAccountName = Guid.NewGuid().ToString("N").Substring(0,24)
