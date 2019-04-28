@@ -137,7 +137,7 @@ Target.create "ArmTemplate" (fun _ ->
         |> Async.RunSynchronously
 
     let deployment =
-        let location = Environment.environVarOrDefault "location" Region.EuropeWest.Name
+        let location = Environment.environVarOrDefault "location" Region.USSouthCentral.Name
         let pricingTier = Environment.environVarOrDefault "pricingTier" "F1"
         { DeploymentName = "SAFE-template-deploy"
           ResourceGroup = New(resourceGroupName, Region.Create location)
