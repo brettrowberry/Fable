@@ -7,3 +7,4 @@ group Client
     Fulma
     Thoth.Json
     Fulma.Extensions.Wikiki.Checkradio
+    Fulma.Extensions.Wikiki.Divider

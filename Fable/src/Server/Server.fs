@@ -27,7 +27,15 @@ let port = "SERVER_PORT" |> tryGetEnv |> Option.map uint16 |> Option.defaultValu
 
 let listHandler () =
      let sas = azureStorage.List().ToArray()
-     let saNames = sas |> Array.map (fun sa -> { Id = sa.Id; Name = sa.Name; Region = sa.RegionName } )
+     let saNames = 
+          sas 
+          |> Array.map (fun sa -> { 
+               Id = sa.Id; 
+               Name = sa.Name; 
+               Region = sa.RegionName; 
+               Tags = sa.Tags 
+                    |> Seq.map (fun t -> (t.Key, t.Value)) 
+                    |> Seq.toArray } )
      json saNames
 
 let createHandler nickname = 

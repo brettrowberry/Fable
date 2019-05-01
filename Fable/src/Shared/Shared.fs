@@ -10,7 +10,7 @@ type FableStorageAccount =
         Id : string
         Name : string
         Region : string
-        // tags : IReadOnlyDictionary<string,string> 
+        Tags : (string * string) []
     }
 
 module Route =

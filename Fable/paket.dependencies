@@ -31,6 +31,7 @@ group Client
     nuget Fulma ~> 1.1
     nuget Thoth.Json
     nuget Fulma.Extensions.Wikiki.Checkradio
+    nuget Fulma.Extensions.Wikiki.Divider
 
 group Build
     source https://api.nuget.org/v3/index.json

@@ -1021,6 +1021,10 @@ bulma-checkradio@^2.1.0:
   version "2.1.0"
   resolved "https://registry.yarnpkg.com/bulma-checkradio/-/bulma-checkradio-2.1.0.tgz#494ab05b0245a41a0083bbd08436fafbde4b3814"
 
+bulma-divider@^2.0.1:
+  version "2.0.1"
+  resolved "https://registry.yarnpkg.com/bulma-divider/-/bulma-divider-2.0.1.tgz#6ab81c939fafd4962e2e5432b2df07dfeb02f150"
+
 bytes@3.0.0:
   version "3.0.0"
   resolved "https://registry.yarnpkg.com/bytes/-/bytes-3.0.0.tgz#d32815404d689699f85a4ea4fa8755dd13a96048"

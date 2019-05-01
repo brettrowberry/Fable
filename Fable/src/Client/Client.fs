@@ -15,16 +15,19 @@ open Shared
 open Fulma
 open Fulma.Extensions.Wikiki
 
+
 type Model = { Accounts : FableStorageAccount []
                Error : exn option
                IsProcessing : bool
                SelectedIds : Set<string>
-               CanDelete: bool}
+               CanDelete: bool
+               Nickname: string option}
 
 type Msg =
 | ListAccounts of FableStorageAccount []
-| Create of string
+| Create 
 | CreateOk of string
+| NicknameBox of string
 | ErrorMsg of exn
 | RemoveError 
 | Delete
@@ -67,7 +70,8 @@ let init () : Model * Cmd<Msg> =
       Error = None
       IsProcessing = false
       SelectedIds = Set.empty
-      CanDelete = false}
+      CanDelete = false
+      Nickname = None}
     initialModel, listAccountsCmd
 
 let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
@@ -79,14 +83,14 @@ let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
         {currentModel with Error = Some err; IsProcessing = false}, Cmd.none
     | RemoveError ->
         {currentModel with Error = None}, Cmd.none    
-    | Create nickname -> //throw up a spinner on the create button?
+    | Create -> //throw up a spinner on the create button?
         let createCmd =
             Cmd.ofPromise 
                 createAccount
-                nickname
+                currentModel.Nickname.Value
                 CreateOk
                 ErrorMsg        
-        {currentModel with IsProcessing = true}, createCmd
+        {currentModel with IsProcessing = true; Nickname = None}, createCmd
     | CreateOk _ ->
         {currentModel with IsProcessing = false}, listAccountsCmd
     | Delete ->
@@ -98,16 +102,22 @@ let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
           if currentModel.SelectedIds.Contains id
           then currentModel.SelectedIds.Remove id
           else currentModel.SelectedIds.Add id
-        {currentModel with SelectedIds = newSet; CanDelete = newSet.Count > 0 }, Cmd.none               
+        {currentModel with SelectedIds = newSet; CanDelete = newSet.Count > 0 }, Cmd.none   
+    | NicknameBox n ->
+      { currentModel with Nickname = Some n}, Cmd.none            
     | _ ->
       Fable.Import.Browser.console.debug "Match Any"
       currentModel, Cmd.none
 
 //TODO make name an input
-let viewCommands (dispatch : Msg -> unit) canDelete =
+let viewCommands (dispatch : Msg -> unit) model =
   Container.container [] [
-    Button.a [Button.OnClick(fun _ -> Create "name" |> dispatch)] [ str "Create"]
-    Button.a [Button.OnClick(fun _ -> Delete |> dispatch); Button.Disabled (not canDelete) ] [ str "Delete"]
+    Label.label [] [ str "Storage Account Nickname" ]
+    Input.text [Input.OnChange(fun f -> NicknameBox f.Value |> dispatch); Input.Value (defaultArg model.Nickname "")]
+    Button.a [Button.OnClick(fun _ -> Create |> dispatch); Button.Disabled (model.Nickname.IsNone)] [ str "Create"]
+    Divider.divider [ ]
+    
+    Button.a [Button.OnClick(fun _ -> Delete |> dispatch); Button.Disabled (not model.CanDelete) ] [ str "Delete"]
   ]
 
 let viewSpinner = div [ ClassName "lds-dual-ring" ] []
@@ -126,6 +136,7 @@ let viewAccountRow isSelected (sa : FableStorageAccount) dispatch =
       Checkradio.Id sa.Name
       Checkradio.Checked isSelected
       Checkradio.OnChange (fun _ -> ToggleSelect sa.Id |> dispatch) ] []]
+    td [] [ str (String.concat ", " (sa.Tags |> Array.map snd)) ]
     td [] [ str sa.Name ]
     td [] [ str sa.Region ] ]
 
@@ -140,6 +151,7 @@ let viewAccounts (model : Model ) (dispatch : Msg -> unit) =
     thead [] [
       tr [] [ 
         th [] [ str "Selected" ]
+        th [] [ str "Nickname" ]
         th [] [ str "Name" ]
         th [] [ str "Region" ] 
       ]
@@ -155,7 +167,7 @@ let view (model : Model) (dispatch : Msg -> unit) =
             yield viewError model.Error.Value dispatch
           if model.IsProcessing then 
             yield viewSpinner          
-          yield viewCommands dispatch model.CanDelete
+          yield viewCommands dispatch model
           yield viewAccounts model dispatch })
 
 #if DEBUG
