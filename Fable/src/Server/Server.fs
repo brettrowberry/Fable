@@ -12,8 +12,6 @@ open Microsoft.AspNetCore.Http
 open FSharp.Control.Tasks.V2
 open Giraffe
 open Shared
-open Thoth.Json.Giraffe
-open Thoth.Json.Net
 
 open Microsoft.WindowsAzure.Storage
 open Storage
@@ -29,14 +27,14 @@ let port = "SERVER_PORT" |> tryGetEnv |> Option.map uint16 |> Option.defaultValu
 
 let listHandler () =
      let sas = azureStorage.List().ToArray()
-     let saNames = sas |> Array.map (fun sa -> { Name = sa.Name; Region = sa.RegionName } )
+     let saNames = sas |> Array.map (fun sa -> { Id = sa.Id; Name = sa.Name; Region = sa.RegionName } )
      json saNames
 
 let createHandler nickname = 
      let name = createStorageAccount nickname
      sprintf "created '%s' with nickname '%s'" name nickname |> text
 
-let deleteHandler : HttpHandler =
+let deletesHandler : HttpHandler =
      fun (next : HttpFunc) (ctx : HttpContext) ->
           task {
                let! ids = ctx.BindJsonAsync<string []>()
@@ -46,18 +44,20 @@ let deleteHandler : HttpHandler =
           }
 
 let webApp =
-    choose [
-           routeCi (Route.builder Route.List) >=> warbler (fun _ -> listHandler ())
-           routeCif "/api/Create/%s" createHandler
-           routeCi (Route.builder Route.Delete) >=> deleteHandler
+     choose [
+             GET  >=> choose [
+                 routeCi (Route.builder Route.List) >=> warbler (fun _ -> listHandler ())
+                 routeCif "/api/Create/%s" createHandler
+                 //get storage account details        
+                 //routeCi (Route.builder CreateSASToken) >=> x
+                 //routeCi (Route.builder ChangeKey) >=> x
+             ]
+             POST >=> choose [
+                 routeCi (Route.builder Route.Delete) >=> deletesHandler
+             ]
+             RequestErrors.NOT_FOUND "Not Found"
+         ]
 
-           //later
-           //get storage account details        
-           //routeCi (Route.builder CreateSASToken) >=> x
-           //routeCi (Route.builder ChangeKey) >=> x
-           
-           setStatusCode 404 >=> text "Not Found"
-    ]
 
 let configureApp (app : IApplicationBuilder) =
     app.UseDefaultFiles()

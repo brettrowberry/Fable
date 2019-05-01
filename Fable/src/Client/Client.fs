@@ -11,7 +11,6 @@ open Fable.PowerPack.Fetch
 open Thoth.Json
 
 open Shared
-open System.Globalization
 
 open Fulma
 open Fulma.Extensions.Wikiki
@@ -19,7 +18,8 @@ open Fulma.Extensions.Wikiki
 type Model = { Accounts : FableStorageAccount []
                Error : exn option
                IsProcessing : bool
-               SelectedIds : Set<string>}
+               SelectedIds : Set<string>
+               CanDelete: bool}
 
 type Msg =
 | ListAccounts of FableStorageAccount []
@@ -49,7 +49,7 @@ let deleteAccounts (ids : string[]) =
 
 let deleteAccountsCmd (ids : string[]) =
     Cmd.ofPromise
-        deleteAccounts         
+        deleteAccounts     
         ids
         DeleteOk
         ErrorMsg
@@ -62,7 +62,12 @@ let listAccountsCmd =
         ErrorMsg
 
 let init () : Model * Cmd<Msg> =
-    let initialModel = { Accounts = [||]; Error = None; IsProcessing = false; SelectedIds = Set.empty}
+    let initialModel = { 
+      Accounts = [||]
+      Error = None
+      IsProcessing = false
+      SelectedIds = Set.empty
+      CanDelete = false}
     initialModel, listAccountsCmd
 
 let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
@@ -84,24 +89,25 @@ let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
         {currentModel with IsProcessing = true}, createCmd
     | CreateOk _ ->
         {currentModel with IsProcessing = false}, listAccountsCmd
-    | Delete -> //todo diable delete button
-        {currentModel with IsProcessing = true}, deleteAccountsCmd (Array.ofSeq currentModel.SelectedIds )
+    | Delete ->
+        {currentModel with IsProcessing = true; CanDelete = false}, deleteAccountsCmd (Array.ofSeq currentModel.SelectedIds )
     | DeleteOk _ -> 
-        {currentModel with IsProcessing = false; SelectedIds = Set.empty}, listAccountsCmd
+        {currentModel with IsProcessing = false; SelectedIds = Set.empty; CanDelete = true}, listAccountsCmd
     | ToggleSelect id ->
         let newSet = 
           if currentModel.SelectedIds.Contains id
-          then currentModel.SelectedIds.Remove id 
+          then currentModel.SelectedIds.Remove id
           else currentModel.SelectedIds.Add id
-        {currentModel with SelectedIds = newSet}, listAccountsCmd               
-    | _ -> 
+        {currentModel with SelectedIds = newSet; CanDelete = newSet.Count > 0 }, Cmd.none               
+    | _ ->
       Fable.Import.Browser.console.debug "Match Any"
       currentModel, Cmd.none
 
 //TODO make name an input
-let viewCommands (dispatch : Msg -> unit) =
+let viewCommands (dispatch : Msg -> unit) canDelete =
   Container.container [] [
     Button.a [Button.OnClick(fun _ -> Create "name" |> dispatch)] [ str "Create"]
+    Button.a [Button.OnClick(fun _ -> Delete |> dispatch); Button.Disabled (not canDelete) ] [ str "Delete"]
   ]
 
 let viewSpinner = div [ ClassName "lds-dual-ring" ] []
@@ -114,14 +120,14 @@ let viewError (model : exn) (dispatch : Msg -> unit) =
         Delete.delete [ Delete.OnClick (fun _ -> dispatch RemoveError) ] [ ] ]
     Message.body [ ] [ str model.Message ] ]
 
-let viewAccountRow isSelected id region dispatch = 
+let viewAccountRow isSelected (sa : FableStorageAccount) dispatch = 
   tr [] [ 
     td [] [ Checkradio.checkbox [ 
-      Checkradio.Id id
+      Checkradio.Id sa.Name
       Checkradio.Checked isSelected
-      Checkradio.OnChange (fun _ -> ToggleSelect id |> dispatch) ] []]
-    td [] [ str id ] 
-    td [] [ str region ] ]
+      Checkradio.OnChange (fun _ -> ToggleSelect sa.Id |> dispatch) ] []]
+    td [] [ str sa.Name ]
+    td [] [ str sa.Region ] ]
 
 let viewAccounts (model : Model ) (dispatch : Msg -> unit) =
     //https://fulma.github.io/Fulma/#fulma/layouts/columns
@@ -129,7 +135,7 @@ let viewAccounts (model : Model ) (dispatch : Msg -> unit) =
   
   let tableBody = 
     [ for x in model.Accounts -> 
-      viewAccountRow (model.SelectedIds.Contains x.Name) x.Name x.Region dispatch]
+      viewAccountRow (model.SelectedIds.Contains x.Id) x dispatch]
   Table.table [ Table.IsBordered; Table.IsStriped; Table.IsHoverable; Table.IsFullWidth ] [ 
     thead [] [
       tr [] [ 
@@ -149,7 +155,7 @@ let view (model : Model) (dispatch : Msg -> unit) =
             yield viewError model.Error.Value dispatch
           if model.IsProcessing then 
             yield viewSpinner          
-          yield viewCommands dispatch
+          yield viewCommands dispatch model.CanDelete
           yield viewAccounts model dispatch })
 
 #if DEBUG

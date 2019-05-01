@@ -7,6 +7,7 @@ type Route =
 
 type FableStorageAccount = 
     { 
+        Id : string
         Name : string
         Region : string
         // tags : IReadOnlyDictionary<string,string> 
