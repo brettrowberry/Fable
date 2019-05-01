@@ -56,7 +56,6 @@ let webApp =
              GET  >=> choose [
                  routeCi (Route.builder Route.List) >=> warbler (fun _ -> listHandler ())
                  routeCif "/api/Create/%s" createHandler
-                 //get storage account details        
                  //routeCi (Route.builder CreateSASToken) >=> x
                  //routeCi (Route.builder ChangeKey) >=> x
              ]

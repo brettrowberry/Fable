@@ -83,7 +83,7 @@ let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
         {currentModel with Error = Some err; IsProcessing = false}, Cmd.none
     | RemoveError ->
         {currentModel with Error = None}, Cmd.none    
-    | Create -> //throw up a spinner on the create button?
+    | Create ->
         let createCmd =
             Cmd.ofPromise 
                 createAccount
@@ -109,7 +109,6 @@ let update (msg : Msg) (currentModel : Model) : Model * Cmd<Msg> =
       Fable.Import.Browser.console.debug "Match Any"
       currentModel, Cmd.none
 
-//TODO make name an input
 let viewCommands (dispatch : Msg -> unit) model =
   Container.container [] [
     Label.label [] [ str "Storage Account Nickname" ]
@@ -123,7 +122,6 @@ let viewCommands (dispatch : Msg -> unit) model =
 let viewSpinner = div [ ClassName "lds-dual-ring" ] []
 
 let viewError (model : exn) (dispatch : Msg -> unit) =
-  //https://fulma.github.io/Fulma/#fulma/components/message
   Message.message [Message.Color IsDanger; Message.Size IsSmall] [ 
     Message.header [ ]
       [ str "Error"
@@ -140,10 +138,7 @@ let viewAccountRow isSelected (sa : FableStorageAccount) dispatch =
     td [] [ str sa.Name ]
     td [] [ str sa.Region ] ]
 
-let viewAccounts (model : Model ) (dispatch : Msg -> unit) =
-    //https://fulma.github.io/Fulma/#fulma/layouts/columns
-    //https://fulma.github.io/Fulma/#fulma/elements/table
-  
+let viewAccounts (model : Model ) (dispatch : Msg -> unit) =  
   let tableBody = 
     [ for x in model.Accounts -> 
       viewAccountRow (model.SelectedIds.Contains x.Id) x dispatch]
