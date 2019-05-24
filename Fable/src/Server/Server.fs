@@ -26,7 +26,7 @@ let port = "SERVER_PORT" |> tryGetEnv |> Option.map uint16 |> Option.defaultValu
 // let detailsHandler name = //TODO
 
 let listHandler () =
-     let sas = azureStorage.List().ToArray()
+     let sas = azureStorage.List().OrderBy(fun s -> s.CreationTime).ToArray()
      let saNames =
           sas 
           |> Array.map (fun sa -> { 
