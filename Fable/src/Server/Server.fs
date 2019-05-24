@@ -27,20 +27,27 @@ let port = "SERVER_PORT" |> tryGetEnv |> Option.map uint16 |> Option.defaultValu
 
 let listHandler () =
      let sas = azureStorage.List().ToArray()
-     let saNames = 
+     let saNames =
           sas 
           |> Array.map (fun sa -> { 
                Id = sa.Id; 
                Name = sa.Name; 
-               Region = sa.RegionName; 
+               Region = sa.RegionName;
+               SASToken = None;
+               SASLoading = None;
                Tags = sa.Tags 
                     |> Seq.map (fun t -> (t.Key, t.Value)) 
-                    |> Seq.toArray } )
+                    |> Seq.toArray })
      json saNames
 
 let createHandler nickname = 
      let name = createStorageAccount nickname
      sprintf "created '%s' with nickname '%s'" name nickname |> text
+
+let createSASTokenHandler id = 
+     let sasToken = createSasToken id
+     System.Threading.Thread.Sleep 3000
+     sasToken |> text
 
 let deletesHandler : HttpHandler =
      fun (next : HttpFunc) (ctx : HttpContext) ->
@@ -56,7 +63,8 @@ let webApp =
              GET  >=> choose [
                  routeCi (Route.builder Route.List) >=> warbler (fun _ -> listHandler ())
                  routeCif "/api/Create/%s" createHandler
-                 //routeCi (Route.builder CreateSASToken) >=> x
+               //   routeCi (Route.builder Route.CreateSASToken) >=> createSASTokenHandler
+                 routeCif "/api/CreateSASToken/%s" createSASTokenHandler
                  //routeCi (Route.builder ChangeKey) >=> x
              ]
              POST >=> choose [

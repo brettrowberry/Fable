@@ -25,7 +25,8 @@ let getStorageAccounts () = azureStorage.List().ToArray()
 let getStorageAccount name = azureStorage.GetByResourceGroup(resourceGroup, name)
 let deleteStorageAccounts ids = azureStorage.DeleteByIdsAsync ids
 //TODO get SAS token
-//TODO change key
+let createSasToken id = "?sv=2018-03-28&ss=b&srt=sco&sp=rwdlac&se=2019-05-24T10:12:05Z&st=2019-05-24T02:12:05Z&spr=https&sig=Zj%2FRbnTzYYtJrtLmA7sipHrEpHtC%2By%2BXSq%2F20aLJbGI%3D"
+// let changeKey id = //TODO change key
 
 let createStorageAccount nickname =
     let storageAccountName = Guid.NewGuid().ToString("N").Substring(0,24)
