@@ -146,9 +146,9 @@ let update (msg : Msg) (current : Model) : Model * Cmd<Msg> =
       {current with Accounts = accounts}, Cmd.none 
     | New ->
       {current with CreateView = Some({IsProcessing = false; Nickname = None})}, Cmd.none
-    | _ ->
-      Fable.Import.Browser.console.debug "Match Any"
-      current, Cmd.none
+    // | _ ->
+    //   Fable.Import.Browser.console.debug "Match Any"
+    //   current, Cmd.none
 
 let viewSpinner = div [ ClassName "lds-dual-ring" ] []
 
