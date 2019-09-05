@@ -1,14 +1,8 @@
 group Server
-    FSharp.Core
-    Giraffe
-    Microsoft.AspNetCore
-    Microsoft.AspNetCore.StaticFiles
-    Microsoft.ApplicationInsights.AspNetCore
-    WindowsAzure.Storage
-    Microsoft.Azure.Management.Storage
-    Microsoft.Azure.Management.Storage.Fluent
-    Microsoft.Azure.Management.ResourceManager
-    Microsoft.Azure.Management.Fluent
-    Microsoft.Azure.Management.ResourceManager.Fluent
-    Microsoft.IdentityModel.Clients.ActiveDirectory
-    Thoth.Json.Giraffe
+Microsoft.AspNetCore
+Microsoft.AspNetCore.StaticFiles
+Microsoft.ApplicationInsights.AspNetCore
+Microsoft.Azure.Management.Storage
+Microsoft.Azure.Management.ResourceManager
+Microsoft.Azure.Management.Fluent
+Thoth.Json.Giraffe
